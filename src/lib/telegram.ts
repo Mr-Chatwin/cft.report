@@ -3,6 +3,7 @@ import { ReportData } from './types';
 export async function sendTelegramNotification(data: ReportData) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
+  const threadId = process.env.TELEGRAM_THREAD_ID; // For topic-based groups
 
   if (!botToken || !chatId) {
     console.warn('TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set, skipping notification');
@@ -36,7 +37,6 @@ export async function sendTelegramNotification(data: ReportData) {
     }
 
     // Construct message
-    // Use HTML parse mode for better formatting in Telegram
     const message = `
 <b>📊 CFTC 持仓周报已生成</b>
 📅 <b>数据日期:</b> ${data.report_date}
@@ -48,15 +48,22 @@ ${summary}
 
     // Send to Telegram
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      text: message.trim(),
+      parse_mode: 'HTML',
+      disable_web_page_preview: false,
+    };
+
+    // Add thread ID if provided (for groups with topics)
+    if (threadId) {
+      payload.message_thread_id = parseInt(threadId, 10);
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message.trim(),
-        parse_mode: 'HTML',
-        disable_web_page_preview: false, // Allow link preview
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
