@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateReport } from '@/lib/cftc';
 import { saveReport, loadReport } from '@/lib/storage';
 import { generateAnalysis } from '@/lib/analysis';
+import { sendTelegramNotification } from '@/lib/telegram';
 import { ReportData } from '@/lib/types';
 
 export const maxDuration = 300;
@@ -49,6 +50,9 @@ export async function GET(request: NextRequest) {
     // Save report — once saved, never modified
     const savedPath = await saveReport(reportData);
     console.log(`Report saved (immutable): ${savedPath}`);
+
+    // Send Telegram notification
+    await sendTelegramNotification(reportData);
 
     return NextResponse.json({
       status: 'success',
