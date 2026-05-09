@@ -2,9 +2,14 @@ name: Update CFTC Report Data
 
 on:
   schedule:
-    # 每周六 16:00 UTC = 周日 00:00 CST（北京时间）
+    # 每周六 16:00 UTC = 周日 00:00 CST（北京时间），等周五收盘后数据更新完
     - cron: '0 16 * * 6'
   workflow_dispatch:
+    inputs:
+      force_regenerate:
+        description: 'Force regenerate even if report exists'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -20,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Generate Report
         env:
