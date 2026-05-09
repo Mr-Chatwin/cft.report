@@ -395,13 +395,7 @@ async function main() {
   const disaggResult = await buildRows(DISAGG_CONTRACTS, disaggRaw, reportDateStr);
   console.log(`  ${disaggResult.rows.length} 个品种`);
 
-  // Check if report already exists
-  const existingPath = join(DATA_DIR, `${reportDateStr}.json`);
-  if (existsSync(existingPath)) {
-    console.log(`⚠ 报告 ${reportDateStr} 已存在，跳过数据生成`);
-    return;
-  }
-
+  // Build report data
   const reportData = {
     report_date: reportDateStr,
     generated_at: new Date().toISOString(),
@@ -410,29 +404,37 @@ async function main() {
     price_data: { ...tffResult.priceData, ...disaggResult.priceData },
   };
 
-  // AI analysis
-  reportData.ai_analysis = await generateAnalysis(reportData);
+  // Check if report already exists
+  const existingPath = join(DATA_DIR, `${reportDateStr}.json`);
+  if (existsSync(existingPath)) {
+    console.log(`⚠ 报告 ${reportDateStr} 已存在，跳过数据保存`);
+    // Load existing report for Telegram push (which includes AI analysis)
+    reportData.ai_analysis = JSON.parse(readFileSync(existingPath, 'utf-8')).ai_analysis || '';
+  } else {
+    // AI analysis for new report
+    reportData.ai_analysis = await generateAnalysis(reportData);
 
-  // Save report
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(existingPath, JSON.stringify(reportData, null, 2), 'utf-8');
-  console.log(`💾 报告已保存: ${existingPath}`);
+    // Save report
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(existingPath, JSON.stringify(reportData, null, 2), 'utf-8');
+    console.log(`💾 报告已保存: ${existingPath}`);
 
-  // Update index
-  const indexPath = join(DATA_DIR, 'index.json');
-  let index = { dates: [] };
-  if (existsSync(indexPath)) index = JSON.parse(readFileSync(indexPath, 'utf-8'));
-  if (!index.dates.includes(reportDateStr)) {
-    index.dates.push(reportDateStr);
-    index.dates.sort();
-    writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
-    console.log('📋 index.json 已更新');
+    // Update index
+    const indexPath = join(DATA_DIR, 'index.json');
+    let index = { dates: [] };
+    if (existsSync(indexPath)) index = JSON.parse(readFileSync(indexPath, 'utf-8'));
+    if (!index.dates.includes(reportDateStr)) {
+      index.dates.push(reportDateStr);
+      index.dates.sort();
+      writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+      console.log('📋 index.json 已更新');
+    }
   }
 
-  // Telegram notification
+  // Always send Telegram notification
   await sendTelegram(reportData);
 
-  console.log('✅ 报告生成完成');
+  console.log('✅ 报告完成');
 }
 
 main().catch(e => { console.error('Fatal:', e); process.exit(1); });
