@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CFTC 持仓报告</title>
+<style>
+:root {
+  --bg-primary: #1C1917; --bg-secondary: #292524; --bg-white: #292524;
+  --text-primary: #FAFAF9; --text-secondary: #E7E5E4; --text-tertiary: #D6D3D1;
+  --text-muted: #A8A29E; --accent-primary: #D97149; --accent-hover: #C45A33;
+  --accent-light: #3D2A22; --accent-lighter: #2C2018;
+  --border-light: #3F3A36; --border-medium: #57534E; --border-dark: #78716C;
+  --green-text: #66BB6A; --green-bg: #1B3A1B; --red-text: #EF5350; --red-bg: #3A1B1B;
+  --yellow-bg: #4A3D10; --yellow-border: #D4A72C;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #FAF8F4; --bg-secondary: #F5F3F0; --bg-white: #FFFFFF;
+    --text-primary: #000000; --text-secondary: #333333; --text-tertiary: #555555;
+    --text-muted: #777777; --border-light: #F0EDE9; --border-medium: #E8E5E1;
+    --border-dark: #DDD9D4; --accent-light: #FFF4F0; --accent-lighter: #FFF9F7;
+    --green-text: #006100; --green-bg: #E8F5E9; --red-text: #9C0006; --red-bg: #FFEBEE;
+    --yellow-bg: #FFF8E1; --yellow-border: #FFCA28;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background: var(--bg-primary); color: var(--text-secondary); font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size: 13px; -webkit-font-smoothing: antialiased; line-height: 1.5; }
+a { color: var(--accent-primary); text-decoration: none; }
+.header { padding: 12px 16px; border-bottom: 1px solid var(--border-medium); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-primary); z-index: 10; }
+.header h1 { font-size: 15px; font-weight: 600; color: var(--text-primary); font-family: 'Times New Roman','SimSun','宋体',serif; }
+.date-picker { display: flex; gap: 8px; align-items: center; }
+.date-picker select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-medium); border-radius: 6px; padding: 4px 8px; font-size: 13px; cursor: pointer; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 2px solid var(--border-light); }
+.tab { padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 13px; font-weight: 500; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+.tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+.tab:hover { color: var(--text-primary); }
+.panel { display: none; }
+.panel.active { display: block; }
+.section-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light); }
+.section-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { background: var(--bg-secondary); color: var(--text-tertiary); font-size: 10px; padding: 8px 6px; text-align: right; border-right: 1px solid var(--border-light); white-space: nowrap; font-weight: 600; }
+thead th:first-child, .section-row td:first-child, tbody td:first-child { text-align: left; }
+thead th:first-child { border-right-color: var(--border-light); }
+tbody td { padding: 6px 6px; text-align: right; border-bottom: 1px solid var(--border-light); white-space: nowrap; tabular-nums; font-size: 11px; }
+tbody tr:hover { background: var(--bg-secondary); }
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--bg-secondary) 30%, transparent); }
+.section-row td { background: color-mix(in srgb, var(--bg-secondary) 60%, transparent); color: var(--text-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 12px; }
+.green { color: var(--green-text); } .red { color: var(--red-text); } .muted { color: var(--text-muted); }
+.flow-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+.flow-tag.多头建仓 { background: var(--green-bg); color: var(--green-text); }
+.flow-tag.多头平仓 { background: var(--red-bg); color: var(--red-text); }
+.flow-tag.空头建仓 { background: var(--red-bg); color: var(--red-text); }
+.flow-tag.空头回补 { background: var(--green-bg); color: var(--green-text); }
+.flow-tag.多头挤压 { background: var(--yellow-bg); color: var(--yellow-border); }
+.flow-tag.空头施压 { background: var(--yellow-bg); color: var(--yellow-border); }
+.flow-tag.多空双增, .flow-tag.多空双减 { background: var(--bg-secondary); color: var(--text-muted); }
+.flow-tag.无, .flow-tag.null { background: var(--bg-secondary); color: var(--text-muted); }
+.zbar { display: inline-block; min-width: 48px; text-align: center; position: relative; font-size: 11px; }
+.zbar-bg { position: absolute; top: 0; bottom: 0; opacity: 0.2; }
+.zbar-bg.pos { left: 50%; background: var(--green-text); }
+.zbar-bg.neg { right: 50%; background: var(--red-text); }
+.zbar span { position: relative; z-index: 1; }
+.analysis-content { line-height: 1.7; color: var(--text-secondary); }
+.analysis-content h3 { color: var(--text-primary); font-size: 15px; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light); }
+.analysis-content h4 { color: var(--text-primary); font-size: 13px; margin: 16px 0 6px; }
+.analysis-content p { margin: 6px 0; }
+.analysis-content ul, .analysis-content ol { padding-left: 20px; margin: 6px 0; }
+.analysis-content li { margin: 3px 0; }
+.analysis-content strong { color: var(--text-primary); }
+.analysis-content code { background: var(--bg-secondary); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+.loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.loading svg { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.error { text-align: center; padding: 60px 20px; color: var(--red-text); }
+.source-link { text-align: center; padding: 24px; color: var(--text-muted); font-size: 11px; border-top: 1px solid var(--border-light); margin-top: 24px; }
+@media (max-width: 640px) { .container { padding: 12px; } .header { padding: 10px 12px; } .header h1 { font-size: 14px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>CFTC Report</h1>
+  <div class="date-picker">
+    <select id="dateSelect"><option>加载中...</option></select>
+  </div>
+</div>
+<div class="container">
+  <div id="loading" class="loading">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg>
+    <p style="margin-top:8px">正在加载报告...</p>
+  </div>
+  <div id="error" class="error" style="display:none"></div>
+  <div id="content" style="display:none">
+    <div class="tabs">
+      <button class="tab active" data-tab="table">📊 持仓数据</button>
+      <button class="tab" data-tab="analysis">🤖 AI 分析</button>
+    </div>
+    <div id="panel-table" class="panel active"></div>
+    <div id="panel-analysis" class="panel"></div>
+  </div>
+</div>
+<div class="source-link">
+  数据来源: CFTC public reporting API · <a href="https://github.com/Mr-Chatwin/cft.report">源码</a>
+</div>
+<script>
+const REPO_URL = window.location.origin + window.location.pathname.replace(/\/$/, '');
+const MARKDOWN_IT = 'https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js';
+
+let reports = [], currentReport = null, mdParser = null;
+
+async function init() {
+  try {
+    // Load report index
+    const indexUrl = REPO_URL + '/data/index.json';
+    let dates;
+    try {
+      const resp = await fetch(indexUrl);
+      if (resp.ok) { dates = (await resp.json()).dates; }
+    } catch(e) {}
+    if (!dates || dates.length === 0) {
+      // Fallback: scan for known report files
+      dates = [
+        '2025-12-30','2026-01-06','2026-01-13','2026-01-20','2026-01-27',
+        '2026-02-03','2026-02-10','2026-02-17','2026-02-24','2026-03-03',
+        '2026-03-10','2026-03-24','2026-04-07','2026-04-21','2026-04-28',
+        '2026-05-05'
+      ];
+    }
+    reports = dates.sort().reverse();
+    if (reports.length === 0) throw new Error('No reports found');
+
+    const sel = document.getElementById('dateSelect');
+    sel.innerHTML = '';
+    reports.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      const dt = new Date(d + 'T00:00:00');
+      const weekday = dt.toLocaleDateString('zh-CN', {weekday:'short'});
+      opt.textContent = `${d} (${weekday})`;
+      sel.appendChild(opt);
+    });
+    sel.value = reports[0];
+    sel.addEventListener('change', () => loadReport(sel.value));
+    await loadReport(reports[0]);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').innerHTML = `加载失败: ${e.message}`;
+  }
+}
+
+async function loadReport(date) {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const url = REPO_URL + `/data/${date}.json`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    currentReport = await resp.json();
+    renderReport(currentReport);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').innerHTML = `加载报告失败: ${e.message}`;
+  }
+}
+
+function renderReport(data) {
+  renderTable(data);
+  renderAnalysis(data);
+}
+
+function renderTable(data) {
+  const container = document.getElementById('panel-table');
+  let html = `<p class="section-subtitle">报告日期: ${data.report_date} · 杠杆基金 ${data.tff_rows?.length || 0} 项 · 管理资金 ${data.disagg_rows?.length || 0} 项</p>`;
+  html += buildTable('杠杆基金 Leveraged Funds (TFF)', data.tff_rows || []);
+  html += buildTable('管理资金 Managed Money (Disagg)', data.disagg_rows || []);
+  container.innerHTML = html;
+}
+
+function buildTable(title, rows) {
+  if (!rows.length) return `<p class="section-title">${title}</p><p class="muted">无数据</p>`;
+  let html = `<p class="section-title">${title}</p><div class="table-wrap"><table><thead>`;
+  html += '<tr><th rowspan="2" style="text-align:left">资产</th>';
+  html += '<th rowspan="2">同期涨跌</th>';
+  html += '<th colspan="3" style="border-bottom:1px solid var(--border-light)">净持仓</th>';
+  html += '<th colspan="3" style="border-bottom:1px solid var(--border-light)">多头</th>';
+  html += '<th colspan="3" style="border-bottom:1px solid var(--border-light)">空头</th>';
+  html += '<th rowspan="2">动作</th></tr>';
+  html += '<tr>';
+  ['持仓','z','周变化','持仓','z','周变化','持仓','z','周变化'].forEach(h => {
+    html += `<th style="font-size:9px;color:var(--text-muted)">${h}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  let lastSection = '';
+  rows.forEach(row => {
+    if (row.section !== lastSection) {
+      lastSection = row.section;
+      html += `<tr class="section-row"><td colspan="13">${row.section}</td></tr>`;
+    }
+    const priceChg = row.price_chg;
+    const priceClass = priceChg > 0 ? 'green' : priceChg < 0 ? 'red' : 'muted';
+    const priceStr = priceChg != null ? `${priceChg > 0 ? '+' : ''}${priceChg.toFixed(1)}%` : '-';
+    html += '<tr>';
+    html += `<td style="text-align:left;font-weight:500;color:var(--text-primary)">${row.instrument}</td>`;
+    html += `<td class="${priceClass}">${priceStr}</td>`;
+    html += numCell(row.net) + zBar(row.net_z) + changeCell(row.net_ww, row.net_ww_z);
+    html += numCell(row.long) + zBar(row.long_z) + changeCell(row.long_ww, row.long_ww_z);
+    html += numCell(row.short) + zBar(row.short_z) + changeCell(row.short_ww, row.short_ww_z);
+    html += `<td><span class="flow-tag ${row.flow_state || ''}">${row.flow_state || '-'}</span></td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function numCell(v) {
+  if (v == null) return '<td class="muted">-</td>';
+  const cls = v > 0 ? 'green' : v < 0 ? 'red' : '';
+  return `<td class="${cls}">${v.toLocaleString()}</td>`;
+}
+
+function changeCell(v, z) {
+  if (v == null) return '<td class="muted">-</td>';
+  const cls = v > 0 ? 'green' : v < 0 ? 'red' : 'muted';
+  const zStr = z != null ? ` (${z.toFixed(1)}z)` : '';
+  return `<td class="${cls}">${v.toLocaleString()}${zStr}</td>`;
+}
+
+function zBar(value) {
+  if (value == null) return '<td class="muted" style="text-align:center">-</td>';
+  const pct = Math.min(Math.abs(value) / 3.0 * 50, 50);
+  const pos = value > 0;
+  const neg = value < 0;
+  const cls = pos ? 'green' : neg ? 'red' : 'muted';
+  let bgHtml = '';
+  if (value !== 0) {
+    const dir = pos ? 'pos' : 'neg';
+    bgHtml = `<div class="zbar-bg ${dir}" style="width:${pct}%"></div>`;
+  }
+  return `<td class="zbar">${bgHtml}<span class="${cls}">${value.toFixed(1)}</span></td>`;
+}
+
+async function renderAnalysis(data) {
+  const container = document.getElementById('panel-analysis');
+  const ai = data.ai_analysis;
+  if (!ai) {
+    container.innerHTML = '<div class="loading">🤖 本期无 AI 分析</div>';
+    return;
+  }
+  if (!mdParser) {
+    try {
+      await loadScript(MARKDOWN_IT);
+      mdParser = window.markdownit({ breaks: true, linkify: true });
+    } catch(e) {
+      container.innerHTML = `<div class="error">Markdown 解析器加载失败，显示原始文本</div><pre style="white-space:pre-wrap;font-size:12px;max-width:100%">${escapeHtml(ai)}</pre>`;
+      return;
+    }
+  }
+  container.innerHTML = `<div class="analysis-content">${mdParser.render(ai)}</div>`;
+}
+
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+init();
+</script>
+</body>
+</html>
