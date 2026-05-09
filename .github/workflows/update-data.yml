@@ -1,0 +1,46 @@
+name: Update CFTC Report Data
+
+on:
+  schedule:
+    # 每周六 16:00 UTC = 周日 00:00 CST（北京时间）
+    - cron: '0 16 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate Report
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_API_URL: ${{ secrets.DEEPSEEK_API_URL }}
+          DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          PAGES_BASE_URL: https://mr-chatwin.github.io/cft.report/
+        run: node scripts/update-data.mjs
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Update CFTC report data ($(date +%Y-%m-%d))"
+            git push
+          fi
