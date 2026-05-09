@@ -169,7 +169,7 @@ async function fetchPrice(yfTicker, reportDate) {
 }
 
 // ─── 构建报告 ───
-async function buildRows(contracts, allRows) {
+async function buildRows(contracts, allRows, reportDateStr) {
   const result = [];
   for (const c of contracts) {
     const matched = matchCftc(allRows, c.cftc);
@@ -240,7 +240,7 @@ async function buildRows(contracts, allRows) {
   for (const row of result) {
     const cfg = [...TFF_CONTRACTS, ...DISAGG_CONTRACTS].find(c => c.name === row.instrument);
     if (cfg) {
-      const pi = await fetchPrice(cfg.yf, reportDate);
+      const pi = await fetchPrice(cfg.yf, reportDateStr);
       if (pi) {
         row.price_chg = pi.ret;
         priceData[row.instrument] = pi;
@@ -388,11 +388,11 @@ async function main() {
   console.log(`  TFF: ${tffRaw.length} 行 | Disagg: ${disaggRaw.length} 行`);
 
   console.log('📊 构建 TFF 持仓表...');
-  const tffResult = await buildRows(TFF_CONTRACTS, tffRaw);
+  const tffResult = await buildRows(TFF_CONTRACTS, tffRaw, reportDateStr);
   console.log(`  ${tffResult.rows.length} 个品种`);
 
   console.log('📊 构建 Disagg 持仓表...');
-  const disaggResult = await buildRows(DISAGG_CONTRACTS, disaggRaw);
+  const disaggResult = await buildRows(DISAGG_CONTRACTS, disaggRaw, reportDateStr);
   console.log(`  ${disaggResult.rows.length} 个品种`);
 
   // Check if report already exists
