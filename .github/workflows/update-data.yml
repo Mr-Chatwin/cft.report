@@ -2,8 +2,8 @@ name: Update CFTC Report Data
 
 on:
   schedule:
-    # 每周六 16:00 UTC = 周日 00:00 CST（北京时间），等周五收盘后数据更新完
-    - cron: '0 16 * * 6'
+    # 每周五 22:00 UTC = 周六 06:00 CST (北京时间)，美股收盘后约2小时
+    - cron: '0 22 * * 5'
   workflow_dispatch:
     inputs:
       force_regenerate:
